@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Set, Any
 
 from pydantic import BaseModel, EmailStr, UUID4, Field, validator
 
@@ -33,3 +33,9 @@ class TokenInformation(BaseModel):
     @validator("token")
     def hexlify_token(cls, value):
         return value.hex
+
+
+class SignUpModel(BaseModel):
+    result: Dict[str, str]
+    token: Dict[str, Any]
+

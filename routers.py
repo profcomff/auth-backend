@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 
 import schemas
 from schemas import UserCreate
@@ -10,7 +11,7 @@ import utils
 router = APIRouter(prefix="/users")
 
 
-@router.post("/sign-up", response_model=UserCreate)
+@router.post("/sign-up", response_model=schemas.SignUpModel)
 async def create_user(user: schemas.UserCreate):
     db_user = await utils.get_user_by_email(email=user.email)
     if db_user:
@@ -31,3 +32,11 @@ async def auth(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
 
     return await utils.create_user_token(user_id=user["id"])
+
+
+@router.post("/update")
+async def user_data_update(data: dict, token: str):
+    try:
+        return await utils.user_data_update(token, data)
+    except Exception:
+        print("incorrect")
