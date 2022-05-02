@@ -4,14 +4,13 @@ import string
 import uuid
 from datetime import datetime, timedelta
 
-import sqlalchemy.sql.functions
-from pydantic import ValidationError
+from fastapi import HTTPException
+from pydantic import ValidationError, UUID4
 from sqlalchemy import and_, text
 
 import schemas
 from connect import engine
 
-## from users import tokens_table, users_table
 from connect import users_table, tokens_table
 
 
@@ -57,7 +56,7 @@ async def create_user_token(user_id: int):
             .values(expires=expires, user_id=user_id, id=token_id, token=token)
             .returning(tokens_table.c.token, tokens_table.c.expires)
     )
-    result = engine.execute(query).fetchone()
+    engine.execute(query).fetchone()
     return {"token": token, "expires": expires}
 
 
@@ -70,31 +69,27 @@ async def create_user(user: schemas.UserCreate):
         email=user.email, first_name=user.first_name, hashed_password=f"{salt}${hashed_password}",
         last_name=user.last_name, patronymic=user.patronymic, id=user_id, is_active=True
     ).returning(users_table.columns.is_active)
-    result = engine.execute(query)
+    engine.execute(query)
+    tokeninfo = schemas.TokenInformation(**token)
 
-    return {"result": user.dict(), "token": token}
-
-
-async def user_data_update(token: str, new_data: dict):
-    query = tokens_table.select().where(str(tokens_table.columns.token) == token)
-    result = engine.execute(query).fetchone()
-    if not result:
-        raise Exception
-    else:
-        ## get_info_query = users_table.select().where(users_table.columns.id == result["user_id"])
-        try:
-            for row in new_data.keys():
-                try:
-                    update_query = users_table.update().values(row=new_data[row])
-                    engine.execute(update_query)
-                except Exception:
-                    print("error")
-        except ValidationError:
-            print("non correct")
-        return result
+    return {"result": user.dict(), "token": tokeninfo}
 
 
-async def generate_user_id():
+async def user_data_update(token: UUID4, new_data: schemas.UserUpdateModel):
+    if check_token(token):
+        user_id = engine.execute(tokens_table.select().where(token.__str__() == tokens_table.columns.token)).fetchone()["user_id"]
+        if new_data.first_name is not None and new_data.first_name is not "":
+            engine.execute(
+                users_table.update().where(users_table.columns.id == user_id).values(first_name=new_data.first_name))
+        if new_data.last_name is not None and new_data.last_name is not "":
+            engine.execute(
+                users_table.update().where(users_table.columns.id == user_id).values(last_name=new_data.last_name))
+        if new_data.patronymic is not None and new_data.patronymic is not "":
+            engine.execute(
+                users_table.update().where(users_table.columns.id == user_id).values(patronymic=new_data.patronymic))
+
+
+async def generate_user_id() -> int:
     query = users_table.select().order_by(users_table.columns.id)
     result = engine.execute(query).fetchall()
     if result:
@@ -103,10 +98,21 @@ async def generate_user_id():
         return 1
 
 
-async def generate_token_id():
+async def generate_token_id() -> int:
     query = tokens_table.select().order_by(tokens_table.columns.id)
     result = engine.execute(query).fetchall()
     if result:
         return result[-1]["id"] + 1
     else:
         return 1
+
+
+def check_token(token: UUID4) -> bool:
+    query = tokens_table.select().where(
+        token.__str__() == tokens_table.columns.token)
+    result = engine.execute(query).fetchone()
+    if result and datetime.strptime(str(result["expires"]), '%Y-%m-%d') >= datetime.today():
+        return True
+    else:
+        raise HTTPException(status_code=403)
+

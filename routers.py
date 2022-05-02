@@ -1,8 +1,9 @@
+import traceback
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, UUID4
 
 import schemas
 from schemas import UserCreate
@@ -35,8 +36,8 @@ async def auth(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/update")
-async def user_data_update(data: dict, token: str):
+async def user_data_update(token: UUID4, new_data: schemas.UserUpdateModel):
     try:
-        return await utils.user_data_update(token, data)
-    except Exception:
-        print("incorrect")
+        return await utils.user_data_update(token, new_data)
+    except HTTPException as e:
+        traceback.print_tb(e.__traceback__)

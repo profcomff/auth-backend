@@ -37,5 +37,10 @@ class TokenInformation(BaseModel):
 
 class SignUpModel(BaseModel):
     result: Dict[str, str]
-    token: Dict[str, Any]
+    token: TokenInformation
 
+
+class UserUpdateModel(BaseModel):
+    first_name: str
+    last_name: str
+    patronymic: str
