@@ -77,7 +77,8 @@ async def create_user(user: schemas.UserCreate):
 
 async def user_data_update(token: UUID4, new_data: schemas.UserUpdateModel):
     if check_token(token):
-        user_id = engine.execute(tokens_table.select().where(token.__str__() == tokens_table.columns.token)).fetchone()["user_id"]
+        user_id = engine.execute(tokens_table.select().where(token.__str__() == tokens_table.columns.token)).fetchone()[
+            "user_id"]
         if new_data.first_name is not None and new_data.first_name is not "":
             engine.execute(
                 users_table.update().where(users_table.columns.id == user_id).values(first_name=new_data.first_name))
@@ -116,3 +117,18 @@ def check_token(token: UUID4) -> bool:
     else:
         raise HTTPException(status_code=403)
 
+
+async def delete_token(token: UUID4):
+    if check_token(token):
+        engine.execute(tokens_table.delete().where(token.__str__() == tokens_table.columns.token))
+    else:
+        raise HTTPException(status_code=403)
+
+
+async def delete_all_tokens(token: UUID4):
+    if check_token(token):
+        user_id = engine.execute(tokens_table.select().where(token.__str__() == tokens_table.columns.token)).fetchone()[
+            "user_id"]
+        engine.execute(tokens_table.delete().where(user_id == tokens_table.columns.user_id))
+    else:
+        raise HTTPException(status_code=403)

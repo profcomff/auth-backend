@@ -41,3 +41,19 @@ async def user_data_update(token: UUID4, new_data: schemas.UserUpdateModel):
         return await utils.user_data_update(token, new_data)
     except HTTPException as e:
         traceback.print_tb(e.__traceback__)
+
+
+@router.post("/exit_from_one_session/{token}")
+async def exit_from_one_session(token: UUID4):
+    try:
+        return await utils.delete_token(token)
+    except HTTPException as e:
+        traceback.print_tb(e.__traceback__)
+
+
+@router.post("/exit_from_all_sessions/{token}")
+async def exit_from_all_sessions(token: UUID4):
+    try:
+        return await utils.delete_all_tokens(token)
+    except HTTPException as e:
+        traceback.print_tb(e.__traceback__)
